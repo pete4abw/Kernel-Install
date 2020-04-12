@@ -3,7 +3,9 @@ Kernel Install and Remove
 
 Bash scripts for installing a new Kernel after building.
 Both must be run as root.
+Using **sudo** may cause failure in finding `depmod` command.
 lilo or grub must be manually updated after.
+Tested on **Slackware**.
 
 kinstall.sh
 -----------

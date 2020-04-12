@@ -3,21 +3,16 @@
 # Peter Hyman, pete@peterhyman.com
 # No warranties, and free to use and copy
 
+error() {
+	echo "$1"
+	exit 1
+}
+
 # do some checks
-if [ $UID -ne 0 ]; then
-	echo "must run as root to install a kernel"
-	exit
-fi
-
-if [ ! -f .config ] ; then
-	echo "no .config file found"
-	exit
-fi
-
-if [ ! -f Makefile ] ; then
-	echo "no Makefile file found"
-	exit
-fi
+[ $UID -ne 0 ] && error "Must run as root to install a kernel"
+[ ! -f .config ] && error "No .config file found"
+[ ! -f Makefile ] && error "No Makefile file found"
+[ ! $(which depmod) ] && error "depmod program not found. Using sudo?"
 
 # Set some directories and detect any links
 USDIR="/usr/src"
