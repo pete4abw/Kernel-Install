@@ -10,7 +10,8 @@ Tested on **Slackware**.
 kinstall.sh
 -----------
 
-This program will read from the kernel Makefile
+This program will read from **include/config/kernel.release** if available
+or the kernel **Makefile**
 * **KV** --> Kernel Version
 * **PL** --> Patch Level
 * **SL** --> Sub Level

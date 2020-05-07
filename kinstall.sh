@@ -24,12 +24,20 @@ REALPWDIR=`realpath .`
 # later
 [ "$PWDIR" != "$REALPWDIR" ] && cd "$REALPWDIR"
 
+# use kernel.release to get version if it exists
+if [ -r include/config/kernel.release ] ; then
+	KR=`cat include/config/kernel.release`
+	KV=`echo $KR | cut -d . -f 1`
+	PL=`echo $KR | cut -d . -f 2`
+	SL=`echo $KR | cut -d . -f 3`
+else
 # Kernel, Patch, Sublevel, and full kernel version
 # set from Makefile
+	KV=`grep -m 1 "VERSION"		Makefile | cut -d ' ' -f 3`
+	PL=`grep -m 1 "PATCHLEVEL"	Makefile | cut -d ' ' -f 3`
+	SL=`grep -m 1 "SUBLEVEL"	Makefile | cut -d ' ' -f 3`
+fi
 
-KV=`grep -m 1 "VERSION"		Makefile | cut -d ' ' -f 3`
-PL=`grep -m 1 "PATCHLEVEL"	Makefile | cut -d ' ' -f 3`
-SL=`grep -m 1 "SUBLEVEL"	Makefile | cut -d ' ' -f 3`
 FV=$KV.$PL.$SL
 
 FVDIR="$USDIR/linux-$FV"
