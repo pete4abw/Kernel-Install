@@ -15,7 +15,10 @@ error() {
 [ ! $(which depmod) ] && error "depmod program not found. Using sudo?"
 
 # Set some directories and detect any links
-USDIR="/usr/src"
+USRDIR="/usr"
+USRSRCDIR="$USRDIR/src"
+BOOTDIR="/boot"
+EFIDIR="/boot/efi/EFI/Slackware"
 PWDIR=$PWD
 REALPWDIR=`realpath .`
 
@@ -24,7 +27,22 @@ REALPWDIR=`realpath .`
 # later
 [ "$PWDIR" != "$REALPWDIR" ] && cd "$REALPWDIR"
 
+### make block ###
+# comment out or alter as desired
+# set up .config file with defaults
+make olddefconfig
+# make with -j8 option
+make -j8
+# install modules
+make modules_install
+# install headers to /usr
+make headers_install INSTALL_HDR_PATH="$USRDIR"
+
 # use kernel.release to get version if it exists
+# KR = Kernel Release
+# PL = Patch Level
+# SL = Patch Sub Level
+# FV = Final Version
 if [ -r include/config/kernel.release ] ; then
 	KR=`cat include/config/kernel.release`
 	KV=`echo $KR | cut -d . -f 1`
@@ -40,13 +58,10 @@ fi
 
 FV=$KV.$PL.$SL
 
-FVDIR="$USDIR/linux-$FV"
-
-cp -v .config /boot/config-$FV
-cp -v System.map /boot/System.map-$FV
-cp -v arch/x86/boot/bzImage /boot/vmlinuz-$FV
+FVDIR="$USRSRCDIR/linux-$FV"
 
 # setup /usr/src directory as required
+echo "Linking /usr/src/linux to $REALPWDIR"
 if [ ! -e "$FVDIR" ]; then
 	# kernel source is somewhere else!
 	# link /usr/src/linux-$FV to REALPWDIR
@@ -54,12 +69,25 @@ if [ ! -e "$FVDIR" ]; then
 fi
 
 # remove and recreate linux link to PWD
-
 ln -vnfs "$FVDIR" /usr/src/linux
 
+### mkinitrd ###
+# be sure mkinitrd.conf is set
 echo "Performing mkinitrd"
 
 /sbin/mkinitrd -F /etc/mkinitrd.conf -k $FV -o /boot/initrd-$FV.gz
+
+### Install initrd and vmlinus ###
+echo "Copying core files to /boot"
+cp -v .config /boot/config-$FV
+cp -v System.map /boot/System.map-$FV
+cp -v arch/x86/boot/bzImage /boot/vmlinuz-$FV
+
+# Copy files to efi dir
+# adjust as needed
+echo "Copying files to efi"
+cp -v "$BOOTDIR"/initrd-$FV.gz "$EFIDIR"/initrd.gz
+cp -v "$BOOTDIR"/vmlinuz-$FV "$EFIDIR"/vmlinuz
 
 echo "Be sure to adjust and run lilo, or edit grub.cfg"
 
