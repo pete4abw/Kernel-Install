@@ -9,43 +9,75 @@ BOOT="/boot"
 LIB="/lib/modules"
 USDIR="/usr/src"
 CKV=`uname -r`
+ISREMOVED=0
 
-#root test
+# root test
 if [ $UID -ne "0" ] ; then
 	echo "Only root can do...Exit"
-	exit
+	exit 1
 fi
 
+# usage test
 if [ $# -ne "1" ] ; then
 	echo "Usage: \"$0 kernel_version\"...Exit"
-	exit
+	exit 1
 fi
 
+# current kernel test
 if [ "$CKV" ==  "$1" ] ; then
 	echo "Cannot remove current kernel...Exit"
-	exit
+	exit 1
 fi 
 
-if [ ! -e "/boot/vmlinuz-$1" ] ; then
-	echo "Can't find kernel vmlinuz-$1...Exit"
-	exit
+# modules test
+if [ ! -e "$LIB/$1" ] ; then
+	echo "Cannot find module directory. Is kernel $1 installed? Exiting..."
+	exit 1
 fi
 
-CWD="$PWD"
+# individual file tests
+echo "Removing kernel $1 boot directory files..."
+if [ ! -e "$BOOT/initrd-$1.gz" ] ; then
+	echo "Can't find kernel initrd-$1.gz to remove...Continuing"
+else
+	rm -v $BOOT/initrd-$1.gz
+	ISREMOVED=1
+fi
 
-cd $BOOT
-echo $PWD
-rm config-$1 System.map-$1 initrd-$1.gz vmlinuz-$1
+if [ ! -e "$BOOT/vmlinuz-$1" ] ; then
+	echo "Can't find kernel vmlinuz-$1 to remove...Continuing"
+else
+	rm -v $BOOT/vmlinuz-$1
+	[ $ISREMOVED -eq 0 ] && ISREMOVED=1
+fi
 
-cd $LIB
-echo $PWD
-rm -fr $1
+if [ ! -e "$BOOT/System.map-$1" ] ; then
+	echo "Can't find kernel System.map-$1 to remove...Continuing"
+else
+	rm -v $BOOT/System.map-$1
+	[ $ISREMOVED -eq 0 ] && ISREMOVED=1
+fi
 
-cd $USDIR
-echo $PWD
-rm -fr linux-$1
+if [ ! -e "$BOOT/config-$1" ] ; then
+	echo "Can't find kernel config-$1.gz to remove...Continuing"
+else
+	rm -v $BOOT/config-$1.gz
+	[ $ISREMOVED -eq 0 ] && ISREMOVED=1
+fi
 
-cd "$CWD"
+[ $ISREMOVED -eq 0 ] &&	echo "Odd that no files removed from $BOOT directory"
 
-exit
+# Already tested for existence of lib directory
+echo "Removing module directory $LIB/$1"
+rm -fr $LIB/$1
+
+# Remove kernel source directory if present
+if [ ! -e "$USDIR/linux-$1" ] ; then
+	echo "Can't find $USDIR/linux-$1 source directory...Continuing"
+else
+	echo "Removing kernel $1 source directory or link..."
+	rm -fr $USDIR/linux-$1
+fi
+
+echo "Kernel $1 removed. EFI directories, if any, not touched."
 
