@@ -59,9 +59,9 @@ else
 fi
 
 if [ ! -e "$BOOT/config-$1" ] ; then
-	echo "Can't find kernel config-$1.gz to remove...Continuing"
+	echo "Can't find kernel config-$1 to remove...Continuing"
 else
-	rm -v $BOOT/config-$1.gz
+	rm -v $BOOT/config-$1
 	[ $ISREMOVED -eq 0 ] && ISREMOVED=1
 fi
 
