@@ -34,8 +34,8 @@ none	- 	do everything from make olddefconfig to mkinitrd
 -m	-	make all
   -ma	-	make all
   -mo	-	make oldconfig
-  -md	-	make olddefconfig
-  -mp	-	make mrproper
+  -mO	-	make olddefconfig
+  -mr	-	make mrproper
   -mc	-	make clean
   -mv	-	make vmlinuz
   -mb	-	make bzimage
@@ -100,7 +100,7 @@ getkv() {
 
 getkr() {
 	FV=$(make kernelrelease | tail -n1) || error "cannot fetch kernel release."
-	outp "Kernel Version is $FV"
+	outp "Kernel Release Version is $FV"
 # not used currently
 #	KV=`echo $FV | cut -d . -f 1`
 #	PL=`echo $FV | cut -d . -f 2`
@@ -129,17 +129,17 @@ makeodc() {
 
 makev() {
 	outp "performing make vmlinux"
-	$NICE $NICENESS make $MAKEOPTS vmlinux || error "make vmlinux failed."
+	make $MAKEOPTS vmlinux || error "make vmlinux failed."
 }
 
 makebz() {
 	outp "performing make bzimage"
-	$NICE $NICENESS make $MAKEOPTS bzImage || error "make bzimage failed."
+	make $MAKEOPTS bzImage || error "make bzimage failed."
 }
 
 makem() {
 	outp "performing make modules"
-	$NICE $NICENESS make $MAKEOPTS modules || error "make modules failed."
+	make $MAKEOPTS modules || error "make modules failed."
 }
 
 makemi() {
@@ -202,98 +202,98 @@ dolinks() {
 	ln -vnfs "$FVDIR" /usr/src/linux
 }
 
-# set all variables to false
-MAKEKV=false
-MAKEKR=false
-MAKEMRP=false
-MAKEC=false
-MAKEA=false
-MAKEOC=false
-MAKEODC=false
-MAKEV=false
-MAKEBZ=false
-MAKEM=false
-MAKEMI=false
-MAKEHI=false
-MAKEIRD=false
-COPYB=false
-COPYE=false
-LINKSRC=false
+# set all variables to no
+MAKEKV=no
+MAKEKR=no
+MAKEMRP=no
+MAKEC=no
+MAKEA=no
+MAKEOC=no
+MAKEODC=no
+MAKEV=no
+MAKEBZ=no
+MAKEM=no
+MAKEMI=no
+MAKEHI=no
+MAKEIRD=no
+COPYB=no
+COPYE=no
+LINKSRC=no
 
 # if last option is not "--" then go through all cases
 if [ $1 != "--" ]; then
 while true; do
 	case "$1" in
 		'-k')	# get kernel version
-			MAKEKV=true
-			MAKEKR=false
-			MAKEA=false
+			MAKEKV=yes
+			MAKEKR=no
+			MAKEA=no
 			shift
 			continue
 			;;
 		'-K')	# get kernel release verion
-			MAKEKV=false
-			MAKEKR=true
-			MAKEA=false
+			MAKEKV=no
+			MAKEKR=yes
+			MAKEA=no
 			shift
 			continue
 			;;
 		'-m')	# make all or make with specific options
 			case "$2" in
 				'' | 'a' )
-					MAKEA=true
+					MAKEA=yes
 					;;
 				'o')	# oldconfig
-					MAKEODC=false
-					MAKEOC=true
-					MAKEA=false
+					MAKEODC=no
+					MAKEOC=yes
+					MAKEA=no
 					;;
-				'd')	# olddefconfig
-					MAKEODC=true
-					MAKEOC=false
-					MAKEA=false
+				'O')	# olddefconfig
+					MAKEODC=yes
+					MAKEOC=no
+					MAKEA=no
 					;;
-				'p')	# mrproper
-					MAKEMRP=true
-					MAKEC=false
-					MAKEKV=false
-					MAKEKR=false
-					MAKEODC=false
-					MAKEOC=false
-					MAKEA=false
+				'r')	# mrproper
+					MAKEMRP=yes
+					MAKEC=no
+					MAKEKV=no
+					MAKEKR=no
+					MAKEODC=no
+					MAKEOC=no
+					MAKEA=no
 					;;
 				'c')	# clean
-					MAKEMRP=false
-					MAKEC=true
-					MAKEKV=false
-					MAKEKR=false
-					MAKEODC=false
-					MAKEOC=false
-					MAKEA=false
+					MAKEMRP=no
+					MAKEC=yes
+					MAKEKV=no
+					MAKEKR=no
+					MAKEODC=no
+					MAKEOC=no
+					MAKEA=no
 					;;
 				'v')	# vmlinux
-					MAKEV=true
-					MAKEA=false
+					MAKEV=yes
+					MAKEA=no
 					;;
 				'b')	# bzImage
-					MAKEBZ=true
-					MAKEA=false
+					MAKEBZ=yes
+					MAKEA=no
 					;;
 				'm')	# modules
-					MAKEM=true
-					MAKEA=false
+					MAKEM=yes
+					MAKEA=no
 					;;
 				'M')	# modules_install
-					MAKEMI=true
-					MAKEA=false
+					MAKEMI=yes
+					MAKEA=no
 					;;
 				'h')	# headers_install
-					MAKEHI=true
-					MAKEA=false
+					MAKEHI=yes
+					MAKEA=no
 					;;
 				'i')	# initrd
-					MAKEIRD=true
-					MAKEA=false
+					MAKEIRD=yes
+					MAKEA=no
 					;;
 				*)	# oops
 					outp "Invalid Make Option $2"
@@ -305,20 +305,20 @@ while true; do
 			continue
 			;;
 		'-C')	# copy to /boot
-			COPYB=true
-			MAKEA=false
+			COPYB=yes
+			MAKEA=no
 			shift
 			continue
 			;;
 		'-E')	# copy to efi partition
-			COPYE=true
-			MAKEA=false
+			COPYE=yes
+			MAKEA=no
 			shift
 			continue
 			;;
 		'-L')	# link /usr/src/linux to kernel dir
-			LINKSRC=true
-			MAKEA=false
+			LINKSRC=yes
+			MAKEA=no
 			shift
 			continue
 			;;
@@ -338,9 +338,10 @@ while true; do
 	esac
 done
 elif [ $1 == "--" ]; then	# no arguments, set defaults
-	MAKEA=true
-	MAKEODC=true
-	MAKEKV=true
+	MAKEA=yes
+	MAKEODC=yes
+	MAKEKV=yes
+	shift
 fi	# if arguments
 
 # it's still possible non options are present. We then have to stop as well
@@ -351,23 +352,23 @@ fi
 
 # now process everything in order optionally
 # need kernel version first all the time
-[ $MAKEKV==true ]	&& getkv
-[ $MAKEKR==true ]	&& getkr
+[ $MAKEKV == yes  ]	&& getkv
+[ $MAKEKR == yes  ]	&& getkr
 
 setupvars
 
-[ $MAKEMRP==true ]	&& makemrp
-[ $MAKEODC==true ]	&& makeodc
-[ $MAKEOC==true ]	&& makeoc
-[ $MAKEC==true ]	&& makec
-[ $MAKEV==true   || $MAKEA==true ]	&& makev
-[ $MAKEBZ==true  || $MAKEA==true ]	&& makebz
-[ $MAKEM==true   || $MAKEA==true ]	&& makem
-[ $MAKEMI==true  || $MAKEA==true ]	&& makemi
-[ $MAKEHI==true  || $MAKEA==true ]	&& makehi
-[ $MAKEIRD==true || $MAKEA==true ]	&& makeird
-[ $COPYB==true   || $MAKEA==true ]	&& copy2boot
-[ $COPYE==true   || $MAKEA==true ]	&& copy2efi
-[ $LINKSRC==true || $MAKEA==true ]	&& dolinks
+[ $MAKEMRP == yes ]	&& makemrp
+[ $MAKEODC == yes ]	&& makeodc
+[ $MAKEOC == yes ]	&& makeoc
+[ $MAKEC == yes ]	&& makec
+[ $MAKEV == yes   -o $MAKEA == yes ]	&& makev
+[ $MAKEBZ == yes  -o $MAKEA == yes ]	&& makebz
+[ $MAKEM == yes   -o $MAKEA == yes ]	&& makem
+[ $MAKEMI == yes  -o $MAKEA == yes ]	&& makemi
+[ $MAKEHI == yes  -o $MAKEA == yes ]	&& makehi
+[ $MAKEIRD == yes -o $MAKEA == yes ]	&& makeird
+[ $COPYB == yes   -o $MAKEA == yes ]	&& copy2boot
+[ $COPYE == yes   -o $MAKEA == yes ]	&& copy2efi
+[ $LINKSRC == yes -o $MAKEA == yes ]	&& dolinks
 
 fini 0
