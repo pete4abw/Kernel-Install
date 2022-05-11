@@ -76,19 +76,6 @@ unset TEMP
 [ ! -x $(which mkinitrd) ] && error "mkinitrd not found. This may be serious."
 [ ! -x $(which depmod) ] && error "depmod program not found. Using sudo?"
 
-setupvars() {
-	# Set some directories and detect any links
-	# getkv or getkr must be called prior to get kernel version value $FV
-	BOOTDIR="/boot"
-	EFIDIR="/boot/efi/EFI/Slackware"
-	MAKEOPTS="-j8"
-	REALPWDIR=`realpath .`
-	USRDIR="/usr"
-	USRSRCDIR="$USRDIR/src"
-	FVDIR="$USRSRCDIR/linux-$FV"
-	[ "$PWD" != "$REALPWDIR" ] && cd "$REALPWDIR"
-}
-
 getkv() {
 	FV=$(make kernelversion | tail -n1) || error "cannot fetch kernel version."
 	outp "Kernel Version is $FV"
@@ -105,6 +92,20 @@ getkr() {
 #	KV=`echo $FV | cut -d . -f 1`
 #	PL=`echo $FV | cut -d . -f 2`
 #	SL=`echo $FV | cut -d . -f 3`
+}
+
+setupvars() {
+	# Set some directories and detect any links
+	# getkv or getkr must be called prior to get kernel version value $FV
+	[ -z "$FV" ] && getkv
+	BOOTDIR="/boot"
+	EFIDIR="/boot/efi/EFI/Slackware"
+	MAKEOPTS="-j8"
+	REALPWDIR=`realpath .`
+	USRDIR="/usr"
+	USRSRCDIR="$USRDIR/src"
+	FVDIR="$USRSRCDIR/linux-$FV"
+	[ "$PWD" != "$REALPWDIR" ] && cd "$REALPWDIR"
 }
 
 makemrp() {
@@ -221,7 +222,7 @@ COPYE=no
 LINKSRC=no
 
 # if last option is not "--" then go through all cases
-if [ $1 != "--" ]; then
+if [ "$1" != "--" ]; then
 while true; do
 	case "$1" in
 		'-k')	# get kernel version
@@ -337,7 +338,7 @@ while true; do
 			;;
 	esac
 done
-elif [ $1 == "--" ]; then	# no arguments, set defaults
+elif [ "$1" == "--" ]; then	# no arguments, set defaults
 	MAKEA=yes
 	MAKEODC=yes
 	MAKEKV=yes
@@ -345,7 +346,7 @@ elif [ $1 == "--" ]; then	# no arguments, set defaults
 fi	# if arguments
 
 # it's still possible non options are present. We then have to stop as well
-if [ $1 ]; then
+if [ "$1" ]; then
 	output="$@"
 	error "Extraneous arguments: $output"
 fi
@@ -354,7 +355,7 @@ fi
 # need kernel version first all the time
 [ $MAKEKV == yes  ]	&& getkv
 [ $MAKEKR == yes  ]	&& getkr
-
+# if kernel version not set, it will be in setupvars
 setupvars
 
 [ $MAKEMRP == yes ]	&& makemrp
