@@ -9,6 +9,15 @@
 # kernel.
 
 # set -x	# for debugging
+
+# set constants for system
+NICE=$(which nice 2>/dev/null)
+MAKE=$(which make 2>/dev/null)
+MAKEOPTS="-j8"
+MAKECMD="$NICE $MAKE"
+BOOTDIR="/boot"
+EFIDIR="/boot/efi/EFI/Slackware"
+
 # save current directory
 
 pushd $PWD
@@ -23,6 +32,19 @@ fini() {
 outp() {
 	echo "$1"
 }
+
+error() {
+	outp "ERROR: $1"
+	fini 1
+}
+
+# do some checks
+[ $UID -ne 0 ] && error "Must run as root to install a kernel."
+[ ! -x $(which make) ] && error "SERIOUS ERROR: No make command found!"
+[ ! -f .config ] && error "No .config file found. Run make oldconfig."
+[ ! -f Makefile ] && error "SERIOUS ERROR: No Makefile file found."
+[ ! -x $(which mkinitrd) ] && error "mkinitrd not found. This may be serious."
+[ ! -x $(which depmod) ] && error "depmod program not found. Using sudo?"
 
 usage() {
 	outp "$(basename $0) usage
@@ -50,11 +72,6 @@ none	- 	do everything from make olddefconfig to mkinitrd
 return
 }
 
-error() {
-	outp "ERROR: $1"
-	fini 1
-}
-
 # get options, taken from util-linux doc
 
 TEMP=$(getopt -o 'kKm::CELh' -- "$@")
@@ -67,14 +84,6 @@ fi
 
 eval set -- "$TEMP"
 unset TEMP
-
-# do some checks
-[ $UID -ne 0 ] && error "Must run as root to install a kernel."
-[ ! -x $(which make) ] && error "SERIOUS ERROR: No make command found!"
-[ ! -f .config ] && error "No .config file found. Run make oldconfig."
-[ ! -f Makefile ] && error "SERIOUS ERROR: No Makefile file found."
-[ ! -x $(which mkinitrd) ] && error "mkinitrd not found. This may be serious."
-[ ! -x $(which depmod) ] && error "depmod program not found. Using sudo?"
 
 getkv() {
 	FV=$(make kernelversion | tail -n1) || error "cannot fetch kernel version."
@@ -98,9 +107,6 @@ setupvars() {
 	# Set some directories and detect any links
 	# getkv or getkr must be called prior to get kernel version value $FV
 	[ -z "$FV" ] && getkv
-	BOOTDIR="/boot"
-	EFIDIR="/boot/efi/EFI/Slackware"
-	MAKEOPTS="-j8"
 	REALPWDIR=`realpath .`
 	USRDIR="/usr"
 	USRSRCDIR="$USRDIR/src"
@@ -130,17 +136,17 @@ makeodc() {
 
 makev() {
 	outp "performing make vmlinux"
-	make $MAKEOPTS vmlinux || error "make vmlinux failed."
+	$MAKECMD $MAKEOPTS vmlinux || error "make vmlinux failed."
 }
 
 makebz() {
 	outp "performing make bzimage"
-	make $MAKEOPTS bzImage || error "make bzimage failed."
+	$MAKECMD $MAKEOPTS bzImage || error "make bzimage failed."
 }
 
 makem() {
 	outp "performing make modules"
-	make $MAKEOPTS modules || error "make modules failed."
+	$MAKECMD $MAKEOPTS modules || error "make modules failed."
 }
 
 makemi() {
