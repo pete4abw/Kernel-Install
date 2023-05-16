@@ -10,16 +10,7 @@
 
 # set -x	# for debugging
 
-# set constants for system
-NICE=$(which nice 2>/dev/null)
-MAKE=$(which make 2>/dev/null)
-MAKEOPTS="-j8"
-MAKECMD="$NICE $MAKE"
-BOOTDIR="/boot"
-EFIDIR="/boot/efi/EFI/Slackware"
-
 # save current directory
-
 pushd $PWD
 
 # return to original dir if needed
@@ -29,25 +20,44 @@ fini() {
 	exit $1
 }
 
-outp() {
-	echo "$1"
-}
-
 error() {
-	outp "ERROR: $1"
+	echo "ERROR: $1"
 	fini 1
 }
 
-# do some checks
 [ $UID -ne 0 ] && error "Must run as root to install a kernel."
-[ ! -x $(which make) ] && error "SERIOUS ERROR: No make command found!"
+
+# set constants for system and do some error checks
+NICE=$(which nice 2>/dev/null)
+[ -n $NICE ] && NICE=$(basename $NICE)
+MAKE=$(which make 2>/dev/null)
+[ $? -eq 1 ] && error "No Make command found...Exiting"
+MAKE=$(basename $MAKE)
+CC=$(which gcc 2>/dev/null)
+[ $? -eq 1 ] && error "No C compiler found...Exiting"
+CC=$(basename $CC)
+CXX=$(which g++ 2>/dev/null)
+[ $? -eq 1 ] && error "No CPP compiler found...Exiting"
+CXX=$(basename $CXX)
+CCACHE=$(which ccache 2>/dev/null)
+[ -n $CCACHE ] && CCACHE=$(basename $CCACHE)
+MAKEOPTS="-j8 CC=\"$CCACHE $CC\" CXX=\"$CCACHE $CXX\""
+MAKECMD="$NICE $MAKE"
+MKINITRD=$(which mkinitrd 2>/dev/null)
+[ $? -eq 1 ] && error "No Mkinitrd command found...Exiting"
+MKINITRD=$(basename $MKINITRD)
+
+# Set boot and EFI dirs
+BOOTDIR="/boot"
+EFIDIR="/boot/efi/EFI/Slackware"
+
+# do some final kernel checks
 [ ! -f .config ] && error "No .config file found. Run make oldconfig."
 [ ! -f Makefile ] && error "SERIOUS ERROR: No Makefile file found."
-[ ! -x $(which mkinitrd) ] && error "mkinitrd not found. This may be serious."
 [ ! -x $(which depmod) ] && error "depmod program not found. Using sudo?"
 
 usage() {
-	outp "$(basename $0) usage
+	echo "$(basename $0) usage
 
 $(basename $0) [options]
 none	- 	do everything from make olddefconfig to mkinitrd
@@ -87,7 +97,7 @@ unset TEMP
 
 getkv() {
 	FV=$(make kernelversion | tail -n1) || error "cannot fetch kernel version."
-	outp "Kernel Version is $FV"
+	echo "Kernel Version is $FV"
 # not used currently
 #	KV=`echo $FV | cut -d . -f 1`
 #	PL=`echo $FV | cut -d . -f 2`
@@ -96,7 +106,7 @@ getkv() {
 
 getkr() {
 	FV=$(make kernelrelease | tail -n1) || error "cannot fetch kernel release."
-	outp "Kernel Release Version is $FV"
+	echo "Kernel Release Version is $FV"
 # not used currently
 #	KV=`echo $FV | cut -d . -f 1`
 #	PL=`echo $FV | cut -d . -f 2`
@@ -115,59 +125,59 @@ setupvars() {
 }
 
 makemrp() {
-	outp "performing make mrproper"
+	echo "performing make mrproper"
 	make mrproper ||  error "make mrproper failed."
 }
 
 makec() {
-	outp "performing make clean"
+	echo "performing make clean"
 	make clean
 }
 
 makeoc() {
-	outp "performing make oldconfig"
+	echo "performing make oldconfig"
 	make oldconfig || error "make oldconfig failed."
 }
 
 makeodc() {
-	outp "performing make olddefconfig"
+	echo "performing make olddefconfig"
 	make olddefconfig || error "make olddefconfig failed."
 }
 
 makev() {
-	outp "performing make vmlinux"
+	echo "performing make vmlinux"
 	$MAKECMD $MAKEOPTS vmlinux || error "make vmlinux failed."
 }
 
 makebz() {
-	outp "performing make bzimage"
+	echo "performing make bzimage"
 	$MAKECMD $MAKEOPTS bzImage || error "make bzimage failed."
 }
 
 makem() {
-	outp "performing make modules"
+	echo "performing make modules"
 	$MAKECMD $MAKEOPTS modules || error "make modules failed."
 }
 
 makemi() {
-	outp "performing make modules_install"
+	echo "performing make modules_install"
 	make modules_install || error "make modules_install failed."
 }
 
 makehi() {
-	outp "performing make headers_install"
+	echo "performing make headers_install"
 	make headers_install INSTALL_HDR_PATH="$USRDIR" || error "installing headers failed."
 }
 
 makeird() {
-	outp "Performing mkinitrd"
-	mkinitrd -F /etc/mkinitrd.conf -k $FV -o /boot/initrd-$FV.gz
-	outp "Be sure to adjust and run lilo, or edit grub.cfg"
+	echo "Performing mkinitrd"
+	$MKINITRD -F /etc/mkinitrd.conf -k $FV -o /boot/initrd-$FV.gz
+	echo "Be sure to adjust and run lilo, or edit grub.cfg"
 
 }
 
 makeall() {
-	outp "performing make all"
+	echo "performing make all"
 	makev
 	makebz
 	makem
@@ -177,21 +187,21 @@ makeall() {
 }
 
 copy2boot() {
-	outp "Copying core files to /boot"
+	echo "Copying core files to /boot"
 	cp -v .config /boot/config-$FV || error "copying config to boot"
 	cp -v System.map /boot/System.map-$FV || error "copying System.map to boot"
 	cp -v arch/x86/boot/bzImage /boot/vmlinuz-$FV || error "copying vmlinux to boot"
 }
 
 copy2efi() {
-	outp "Saving initrd and vmlunz in efi"
+	echo "Saving initrd and vmlunz in efi"
 	if [ -r "$EFIDIR"/initrd.gz ]; then
 		mv -v "$EFIDIR"/initrd.gz "$EFIDIR"/initrd-lastgood.gz
 	fi
 	if [ -r "$EFIDIR"/vmlinuz ]; then
 		mv -v "$EFIDIR"/vmlinuz "$EFIDIR"/vmlinuz-lastgood
 	fi
-	outp "Copying files to efi"
+	echo "Copying files to efi"
 	cp -v "$BOOTDIR"/initrd-$FV.gz "$EFIDIR"/initrd.gz
 	cp -v "$BOOTDIR"/vmlinuz-$FV "$EFIDIR"/vmlinuz
 }
@@ -303,7 +313,7 @@ while true; do
 					MAKEA=no
 					;;
 				*)	# oops
-					outp "Invalid Make Option $2"
+					echo "Invalid Make Option $2"
 					usage
 					fini 1
 					;;
@@ -338,7 +348,7 @@ while true; do
 			break
 			;;
 		*)	# should never get here
-			outp "Unknown option $1"
+			echo "Unknown option $1"
 			usage
 			fini 1
 			;;
@@ -353,8 +363,8 @@ fi	# if arguments
 
 # it's still possible non options are present. We then have to stop as well
 if [ "$1" ]; then
-	output="$@"
-	error "Extraneous arguments: $output"
+	echout="$@"
+	error "Extraneous arguments: $echout"
 fi
 
 # now process everything in order optionally
