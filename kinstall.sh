@@ -33,15 +33,14 @@ NICE=$(which nice 2>/dev/null)
 MAKE=$(which make 2>/dev/null)
 [ $? -eq 1 ] && error "No Make command found...Exiting"
 MAKE=$(basename $MAKE)
-CC=$(which gcc 2>/dev/null)
+CCOMP=$(which gcc 2>/dev/null)
 [ $? -eq 1 ] && error "No C compiler found...Exiting"
-CC=$(basename $CC)
-CXX=$(which g++ 2>/dev/null)
+CCOMP=$(basename $CCOMP)
+CXXCOMP=$(which g++ 2>/dev/null)
 [ $? -eq 1 ] && error "No CPP compiler found...Exiting"
-CXX=$(basename $CXX)
+CXXCOMP=$(basename $CXXCOMP)
 CCACHE=$(which ccache 2>/dev/null)
-[ -n $CCACHE ] && CCACHE=$(basename $CCACHE)
-MAKEOPTS="-j8 CC=\"$CCACHE $CC\" CXX=\"$CCACHE $CXX\""
+MAKEOPTS=-j8
 MAKECMD="$NICE $MAKE"
 MKINITRD=$(which mkinitrd 2>/dev/null)
 [ $? -eq 1 ] && error "No Mkinitrd command found...Exiting"
@@ -146,17 +145,29 @@ makeodc() {
 
 makev() {
 	echo "performing make vmlinux"
-	$MAKECMD $MAKEOPTS vmlinux || error "make vmlinux failed."
+	if [ ! -n $CCACHE ]; then
+		$MAKECMD $MAKEOPTS vmlinux || error "make vmlinux failed."
+	else
+		$MAKECMD $MAKEOPTS CC="$CCACHE $CCOMP"  CXX="$CCACHE $CXXCOMP" vmlinux || error "make vmlinux failed."
+	fi
 }
 
 makebz() {
 	echo "performing make bzimage"
-	$MAKECMD $MAKEOPTS bzImage || error "make bzimage failed."
+	if [ ! -n $CCACHE ]; then
+		$MAKECMD $MAKEOPTS bzImage || error "make bzimage failed."
+	else
+		$MAKECMD $MAKEOPTS CC="$CCACHE $CCOMP"  CXX="$CCACHE $CXXCOMP" bzImage || error "make bzimage failed."
+	fi
 }
 
 makem() {
 	echo "performing make modules"
-	$MAKECMD $MAKEOPTS modules || error "make modules failed."
+	if [ ! -n $CCACHE ]; then
+		$MAKECMD $MAKEOPTS modules || error "make modules failed."
+	else
+		$MAKECMD $MAKEOPTS CC="$CCACHE $CCOMP"  CXX="$CCACHE $CXXCOMP" modules || error "make modules failed."
+	fi
 }
 
 makemi() {
